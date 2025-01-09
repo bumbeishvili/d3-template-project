@@ -174,10 +174,12 @@ class Chart {
         var containerRect = d3Container.node().getBoundingClientRect();
         if (containerRect.width > 0) attrs.svgWidth = containerRect.width;
 
+        const self = this;
+
         d3.select(window).on("resize." + attrs.id, function () {
             var containerRect = d3Container.node().getBoundingClientRect();
             if (containerRect.width > 0) attrs.svgWidth = containerRect.width;
-            this.render();
+            self.render();
         });
 
         this.setState({ d3Container });
