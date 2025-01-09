@@ -37,7 +37,7 @@ class Chart {
         this.initializeEnterExitUpdatePattern();
     }
 
-    
+
     render() {
         this.setDynamicContainer();
         this.calculateProperties();
@@ -76,15 +76,38 @@ class Chart {
     drawRects() {
         const { chart, data, chartWidth, chartHeight } = this.getState();
 
-        chart
-            ._add({
-                tag: "rect",
-                selector: "rect-sample",
-                data: [data]
-            })
-            .attr("width", chartWidth)
+        const g = chart._add('g.rect-wrap', data)
+
+        g._add('rect.first')
+            .attr('x', 0)
+            .attr("width", chartWidth / 3)
             .attr("height", chartHeight)
-            .attr("fill", (d) => d.color);
+            .attr("fill", (d) => d.color)
+            .on('click', (e, d) => {
+                console.log('just rect', d)
+            })
+
+
+        g._add('rect')
+            .attr('x', chartWidth / 3)
+            .attr("width", chartWidth / 3)
+            .attr("height", chartHeight)
+            .attr("fill", (d) => 'blue')
+            .on('click', (e, d) => {
+                console.log('just rect', d)
+            })
+
+        g._add('rect.test', 'sample-rect-custom')
+            .attr('x', chartWidth / 3 * 2)
+            .attr("width", chartWidth / 3)
+            .attr("height", chartHeight)
+            .attr("fill", (d) => 'green')
+            .on('click', (e, d) => {
+                console.log('just rect with string data', d)
+            })
+
+
+
     }
 
     drawSvgAndWrappers() {
@@ -100,54 +123,46 @@ class Chart {
         } = this.getState();
 
         // Draw SVG
-        const svg = d3Container
-            ._add({
-                tag: "svg",
-                className: "svg-chart-container"
-            })
+        const svg = d3Container._add('svg.svg-container')
             .attr("width", svgWidth)
             .attr("height", svgHeight)
             .attr("font-family", defaultFont);
 
         //Add container g element
-        var chart = svg
-            ._add({
-                tag: "g",
-                className: "chart"
-            })
+        var chart = svg._add('g.chart')
             .attr(
                 "transform",
                 "translate(" + calc.chartLeftMargin + "," + calc.chartTopMargin + ")"
             );
 
-        chart
-            ._add({
-                tag: "rect",
-                selector: "rect-sample",
-                data: [data]
-            })
-            .attr("width", chartWidth)
-            .attr("height", chartHeight)
-            .attr("fill", (d) => d.color);
 
         this.setState({ chart, svg });
     }
 
     initializeEnterExitUpdatePattern() {
-        d3.selection.prototype._add = function (params) {
-            var container = this;
-            var className = params.className;
-            var elementTag = params.tag;
-            var data = params.data || [className];
-            var exitTransition = params.exitTransition || null;
-            var enterTransition = params.enterTransition || null;
-            // Pattern in action
-            var selection = container.selectAll("." + className).data(data, (d, i) => {
-                if (typeof d === "object") {
-                    if (d.id) {
-                        return d.id;
-                    }
-                }
+        d3.selection.prototype._add = function (classSelector, data, params) {
+            const container = this;
+            const split = classSelector.split(".");
+            const elementTag = split[0];
+            const className = split[1] || 'not-good';
+            const exitTransition = params?.exitTransition;
+            const enterTransition = params?.enterTransition;
+
+            let bindData = data;
+            if (typeof data === 'function') {
+                bindData = data(container.datum());
+            }
+            if (!bindData) {
+                bindData = [container.datum()];
+            }
+            if (!bindData) {
+                bindData = [className]
+            }
+            if (!Array.isArray(bindData)) {
+                bindData = [bindData];
+            }
+            let selection = container.selectAll(elementTag + '.' + className).data(bindData, (d, i) => {
+                if (typeof d === "object" && d.id) return d.id;
                 return i;
             });
             if (exitTransition) {
@@ -155,15 +170,17 @@ class Chart {
             } else {
                 selection.exit().remove();
             }
-
             const enterSelection = selection.enter().append(elementTag);
             if (enterTransition) {
                 enterTransition(enterSelection);
             }
             selection = enterSelection.merge(selection);
-            selection.attr("class", className);
+            selection.attr("class", className)
+                .attr('stroke', className == 'not-good' ? 'red' : null)
+                .attr('stroke-width', className == 'not-good' ? 10 : null)
+
             return selection;
-        };
+        }
     }
 
     setDynamicContainer() {
