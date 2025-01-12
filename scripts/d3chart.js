@@ -42,7 +42,7 @@ class Chart {
         this.setDynamicContainer();
         this.calculateProperties();
         this.drawSvgAndWrappers();
-        this.drawRects();
+        this.deleteOrReplaceThisMethod();
         return this;
     }
 
@@ -73,14 +73,14 @@ class Chart {
         this.setState({ calc, chartWidth, chartHeight });
     }
 
-    drawRects() {
+    deleteOrReplaceThisMethod() {
         const { chart, data, chartWidth, chartHeight } = this.getState();
 
         const g = chart._add('g.rect-wrap', data)
 
         g._add('rect.first')
             .attr('x', 0)
-            .attr("width", chartWidth / 3)
+            .attr("width", chartWidth / 4)
             .attr("height", chartHeight)
             .attr("fill", (d) => d.color)
             .on('click', (e, d) => {
@@ -89,8 +89,8 @@ class Chart {
 
 
         g._add('rect')
-            .attr('x', chartWidth / 3)
-            .attr("width", chartWidth / 3)
+            .attr('x', chartWidth / 4)
+            .attr("width", chartWidth / 4)
             .attr("height", chartHeight)
             .attr("fill", (d) => 'blue')
             .on('click', (e, d) => {
@@ -98,12 +98,24 @@ class Chart {
             })
 
         g._add('rect.test', 'sample-rect-custom')
-            .attr('x', chartWidth / 3 * 2)
-            .attr("width", chartWidth / 3)
+            .attr('x', chartWidth / 4 * 2)
+            .attr("width", chartWidth / 4)
             .attr("height", chartHeight)
             .attr("fill", (d) => 'green')
             .on('click', (e, d) => {
                 console.log('just rect with string data', d)
+            })
+
+        const rectWrap = g._add('g.element-wrap', d => d.values)
+            .attr('transform', (d, i, arr) => `translate(${chartWidth / 4 * 3 + i * chartWidth / (4 * arr.length)}, 0)`)
+
+        rectWrap._add('rect.bar')
+            .attr('x', (d, i, arr) => 0)
+            .attr("width", (d, i, arr) => chartWidth / (arr.length * 4))
+            .attr("height", chartHeight)
+            .attr("fill", (d) => d.color)
+            .on('click', (e, d) => {
+                console.log('just rect with rect wrap', d)
             })
 
 
@@ -152,15 +164,17 @@ class Chart {
             if (typeof data === 'function') {
                 bindData = data(container.datum());
             }
-            if (!bindData) {
-                bindData = [container.datum()];
+            if (bindData && !Array.isArray(bindData)) {
+                bindData = [bindData]
             }
             if (!bindData) {
-                bindData = [className]
+                if (container.datum()) {
+                    bindData = d => [d];
+                } else {
+                    bindData = [className];
+                }
             }
-            if (!Array.isArray(bindData)) {
-                bindData = [bindData];
-            }
+
             let selection = container.selectAll(elementTag + '.' + className).data(bindData, (d, i) => {
                 if (typeof d === "object" && d.id) return d.id;
                 return i;
@@ -176,8 +190,13 @@ class Chart {
             }
             selection = enterSelection.merge(selection);
             selection.attr("class", className)
-                .attr('stroke', className == 'not-good' ? 'red' : null)
-                .attr('stroke-width', className == 'not-good' ? 10 : null)
+
+            if (className == 'not-good') {
+                selection
+                    .attr('stroke', className == 'not-good' ? 'red' : null)
+                    .attr('stroke-width', className == 'not-good' ? 10 : null)
+                selection.selectAll('title').data(['not-good']).join('title').text("You don't have a class set for this element!")
+            }
 
             return selection;
         }
